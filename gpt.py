@@ -1,3 +1,6 @@
+"""
+Plain and simple gpt implementation of GPT
+"""
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -214,10 +217,10 @@ for iter in range(max_iters):
     xb, yb = get_batch('train')
 
     # evaluate the loss
-    logits, loss = model(xb, yb)
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
+    logits, loss = model(xb, yb) # forward pass
+    optimizer.zero_grad(set_to_none=True) # set gradient to zero
+    loss.backward() # Calculate the gradient
+    optimizer.step() # and update the values of parameter
 
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
