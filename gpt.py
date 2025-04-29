@@ -1,5 +1,5 @@
 """
-Plain and simple gpt implementation of GPT
+Plain and simple implementation of GPT
 """
 import torch
 import torch.nn as nn
