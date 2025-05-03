@@ -11,16 +11,31 @@ class GPTConfig:
     block_size: int = 1024 # Context length
     n_embd: int = 768 # Feature vector for token in context length
     n_layer: int = 12 # Number of blocks used
+    n_head: int =  12 # number of heads in multi head attention
+
+class CasualSelfAttention(nn.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        # Mulit-Head attention
+        assert config.n_embed % config.n_head == 0
+        self.key = nn.Linear(config.n_embd, config.n_head, bias=False)
+        self.query = nn.Linear(config.n_embd, config.n_head, bias=False)
+        self.key = nn.Linear(config.n_embd, config.n_head, bias=False)
+
+        
+
+
 
 class MLP(nn.Module):
     """
-    
     Model thinks here so for thinking increase the embedding dim
     then decrease
     """
     def __init__(self, config):
         super().__init__()
         self.c_fc= nn.Linear(config.n_embd, 4 * config.n_embd)
+        # Using GELU to avoid dead RELU neuron problem
         self.gelu = nn.GELU(approximate="tanh")
         self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd)
 
@@ -28,7 +43,6 @@ class MLP(nn.Module):
         x = self.c_fc(x)
         x = self.gelu(x)
         x = self.c_proj(x)
-
         return x
 
 class Block(nn.Module):
