@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-# -----
+# ----------
 
 @dataclass
 class GPTConfig:
@@ -102,7 +102,7 @@ class Block(nn.Module):
         super().__init__()
         self.config = config
         self.ln_1 = nn.LayerNorm(config.n_embd) # Normalize the input
-        self.atten = CasualSelfAtention(config) # Attention block
+        self.atten = CasualSelfAttention(config) # Attention block
         self.ln_2 = nn.LayerNorm(config.n_embd) # Normalize the weight
         # Below model is to let model think what they learn
         self.mlp = MLP(config) # Feed Forward network
@@ -110,6 +110,7 @@ class Block(nn.Module):
     def forward(self, x):
         x = x + self.atten(self.ln_1(x)) # Reduce
         x = x + self.mlp(self.ln_2(x)) # Map
+        return x
 
 
 
@@ -127,10 +128,36 @@ class GPT(nn.Module):
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False) # Project the hidden layer weight to vocab size (vocab_size * vocab_size)
     
-    def forward(self, idx):
+    def forward(self, idx, target=None):
         # idx will be shape of (B, T)
         B, T = idx.size()
-        pass
+        assert T <= self.config.block_size, f"Sequence length {T}, is greater than vocab size{self.config.block_size}"
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device) # shape (T)
+        tok_emb = self.transformer.wte(pos) # (T, n_embd)
+        pos_emb = self.transformer.wpe(idx) # (B, T, n_embd)
+        x = tok_emb + pos_emb # (B, T, n_embd)
+        # Forwarding through transformer blocks
+        # Wondering through transformer forests :)
+        for block in self.transformer.h:
+            x = block(x)
+            
+        # applying final layer norm
+        x = self.transformer.ln_f(x)
+        # Forwarding through final linear layer
+        # to get the dimension same as vocab size
+        logits = self.lm_head(x) # (B, T, vocab_size)
+        # probablity
+        loss = None
+        if target is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), target.view(-1))
+        return logits, loss
+            
+
+
+
+
+
+
     
     @classmethod
     def from_pretrained(cls, model_type):
