@@ -108,6 +108,7 @@ class Block(nn.Module):
         self.mlp = MLP(config) # Feed Forward network
 
     def forward(self, x):
+        # Residual stream
         x = x + self.atten(self.ln_1(x)) # Reduce
         x = x + self.mlp(self.ln_2(x)) # Map
         return x
