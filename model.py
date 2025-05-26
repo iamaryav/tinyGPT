@@ -17,9 +17,16 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 # ---------------------
+
 @dataclass
 class GPTConfig:
-    pass
+    vocab_size = 50257 # Number of token recognized by GPT
+    # Maximum number of token a model can take at a single time
+    # context length, Maximum sequence length
+    block_size = 1024 
+    # Feature vector for each token, embedding dimensions, what information that token holds
+    n_embd = 768 
+    # 
 
 # follow the gpt2 naming convention
 # Create this model class
@@ -27,13 +34,30 @@ class GPTConfig:
 
 class GPT(nn.Module):
 
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         # output embedding
         # positional embedding
         # Attention block
         # lm_head
-        
+        self.transformer = nn.ModuleDict(dict(
+            # Contains Feature of tokens
+            wte = nn.Embedding(config.vocab_size, config.n_embd), # token embeddings
+            # Contains feature of position 
+            wpe = nn.Embedding(config.block_size, config.n_embd), # position embeddings
+            # Multiple transformer blocks called layer here
+            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            # Normalize weights 
+            ln_f = nn.LayerNorm(config.n_embd)
+        ))
+        # Projection from hidden layer weight(n_embd) to vocab size
+        # this will help to calculate probablity
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+
+    def forward(self, x):
+        pass
+
+
 
 
 
