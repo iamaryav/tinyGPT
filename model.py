@@ -26,7 +26,8 @@ class GPTConfig:
     block_size = 1024 
     # Feature vector for each token, embedding dimensions, what information that token holds
     n_embd = 768 
-    # 
+    # No of transformer block
+    n_layer = 12
 
 # follow the gpt2 naming convention
 # Create this model class
