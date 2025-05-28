@@ -31,7 +31,9 @@ class GPTConfig:
 
 # follow the gpt2 naming convention
 # Create this model class
-# 
+class Block(nn.Module):
+    pass
+
 
 class GPT(nn.Module):
 
@@ -56,10 +58,8 @@ class GPT(nn.Module):
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
     def forward(self, x):
+        # will code forward pass at last
         pass
-
-
-
 
 
 
