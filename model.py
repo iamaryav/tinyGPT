@@ -28,14 +28,65 @@ class GPTConfig:
     n_embd = 768 
     # No of transformer block
     n_layer = 12
+    n_head = 12 # number of heads in each transformer block
 
-# follow the gpt2 naming convention
+# # number of heads in each transformer block follow the gpt2 naming convention
 # Create this model class
-class Block(nn.Module):
+class CasualSelfAttention(nn.Module):
+    """
+    # TODO: add comment
+    """
+    def __init__(self, config):
+        super().__init__()
+        assert config.n_embd % config.n
+        # self.key = nn.Linear(config.n_embd, config.n_head, bias=False)
+        # self.query = nn.Linear(config.n_embd, config.n_head, bias=False)
+        # self.key = nn.Linear(config.n_embd, config.n_head, bias=False)
+        # instead of creatig key, query, value
+        # creating a c_attn and making it with bigger dimensions
+        # and using it wisely to behave like it key, query, value
+        # Every token in sequence will these three vectors
+        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)
+        self.c_proj= nn.Linear(config.n_embd, config.n_embd)
+        self.n_embd = config.n_embd
+        self.n_head = config.n_head
+
+        # not bias it is a mask
+        # this helps us to take average from previous tokens
+        # in other word learn from past models 
+
+
+class MLP(nn.Module):
+    """
+    # TODO: add comment
+    """
     pass
+
+class Block(nn.Module):
+    """
+    # TODO: add comment
+    """
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        # Attention block
+        # Holy grail of Transformer architechture
+        self.ln_1 = nn.LayerNorm(config.n_embd)
+        self.atten = CasualSelfAttention(config)
+        # Normalize the embedding dimensions
+        self.ln_2 = nn.LayerNorm(config.n_embd)
+        # this is where model learns or thinks on its learning
+        self.mlp = MLP(config) # Feed forward network
+    
+    def forward(self, x):
+        pass
+        
 
 
 class GPT(nn.Module):
+    """
+    # TODO: add comment
+    """
 
     def __init__(self, config):
         super().__init__()
