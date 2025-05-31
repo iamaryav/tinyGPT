@@ -54,6 +54,12 @@ class CasualSelfAttention(nn.Module):
         # not bias it is a mask
         # this helps us to take average from previous tokens
         # in other word learn from past models 
+        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
+                             .view(1, 1, config.block_size, config.block_size))
+                            
+        def forward(self, x):
+
+            pass
 
 
 class MLP(nn.Module):
