@@ -12,6 +12,7 @@
 # keep developing and testing
 
 from dataclasses import dataclass
+import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -38,7 +39,7 @@ class CasualSelfAttention(nn.Module):
     """
     def __init__(self, config):
         super().__init__()
-        assert config.n_embd % config.n
+        assert config.n_embd % config.n_head == 0
         # self.key = nn.Linear(config.n_embd, config.n_head, bias=False)
         # self.query = nn.Linear(config.n_embd, config.n_head, bias=False)
         # self.key = nn.Linear(config.n_embd, config.n_head, bias=False)
@@ -58,8 +59,34 @@ class CasualSelfAttention(nn.Module):
                              .view(1, 1, config.block_size, config.block_size))
                             
         def forward(self, x):
+            # Dimension of data
+            # Actual training tokens
+            hs = config.n_head
+            B, T, C = x.shape
+            # this contains query, key and value all three
+            # we are using single c_attn to have all three by 
+            # having three times of n_embd dimensions
+            qkv = self.c_attn(x)
+            q, k, v = qkv.split(self.n_embd, dim=2)
 
-            pass
+            # nh * hs = n_embd
+            # we are seperating the embedding dimensions in to multiple heads and size
+            # Instead of creating three diff linear layer converting everything in a single layer
+            # and viewing as a q, k, v like three feature vector 
+            # It makes calculation faster compare to having three vector
+            # head size = n_embd // n_head
+            ns = C // self.n_head
+            q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+            k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+            v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+
+            # (query @ key) / dk ** 0.5
+            # implementation of attention manually
+            # how interesting they find each other
+            attn = q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
+            mask = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
+            
+
 
 
 class MLP(nn.Module):
