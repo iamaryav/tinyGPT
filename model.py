@@ -83,11 +83,19 @@ class CasualSelfAttention(nn.Module):
             # (query @ key) / dk ** 0.5
             # implementation of attention manually
             # how interesting they find each other
-            attn = q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
-            mask = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
+            # attn = q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
+            # attn = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
+            # attn = F.softmax(attn, dim=2)
+            # y = attn @ v # (B, nh, T, T) @ (B, nh, T, hs) -> (B, nh, T, hs)
+
+            # pytorch Default calculatioin of self attention
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=True) # (B, nh, T, hs)
+            # we need to transpose then change the view
+            # concatinating the output and making it as same dimension as
+            # B, T, C
+            y = y.transpose(1, 2).contiguous().view(B, T, C)
+            return y
             
-
-
 
 class MLP(nn.Module):
     """
