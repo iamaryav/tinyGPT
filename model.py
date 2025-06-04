@@ -30,6 +30,8 @@ class GPTConfig:
     # No of transformer block
     n_layer = 12
     n_head = 12 # number of heads in each transformer block
+    dropout = 0.0
+    bias = True # True: bias in Linears and LayerNorms, Like GPT-2. False: a bit better and faster
 
 # # number of heads in each transformer block follow the gpt2 naming convention
 # Create this model class
@@ -51,11 +53,18 @@ class CasualSelfAttention(nn.Module):
         self.c_proj= nn.Linear(config.n_embd, config.n_embd)
         self.n_embd = config.n_embd
         self.n_head = config.n_head
+        self.dropout = config.dropout
+        # regularization
+        self.attn_dropout = nn.Dropout(config.dropout)
+        self.resd_dropout = nn.Dropout(config.dropout)
 
         # not bias it is a mask
         # this helps us to take average from previous tokens
         # in other word learn from past models 
-        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
+        self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
+        if not self.flash:
+            print("using slow attention, for flash attention use pytorch >=2.0")
+            self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                              .view(1, 1, config.block_size, config.block_size))
                             
         def forward(self, x):
@@ -80,20 +89,26 @@ class CasualSelfAttention(nn.Module):
             k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
             v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
-            # (query @ key) / dk ** 0.5
-            # implementation of attention manually
-            # how interesting they find each other
-            # attn = q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
-            # attn = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
-            # attn = F.softmax(attn, dim=2)
-            # y = attn @ v # (B, nh, T, T) @ (B, nh, T, hs) -> (B, nh, T, hs)
 
-            # pytorch Default calculatioin of self attention
-            y = F.scaled_dot_product_attention(q, k, v, is_causal=True) # (B, nh, T, hs)
+            if self.flash:
+                # pytorch Default calculatioin of self attention
+                y = F.scaled_dot_product_attention(q, k, v, is_causal=True) # (B, nh, T, hs)
+            else:
+                # (query @ key) / dk ** 0.5
+                # implementation of attention manually
+                # how interesting they find each other
+                attn = (q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1)))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
+                attn = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
+                attn = F.softmax(attn, dim=-1)
+                attn = self.attn_dropout(attn)
+                y = attn @ v # (B, nh, T, T) @ (B, nh, T, hs) -> (B, nh, T, hs)
             # we need to transpose then change the view
             # concatinating the output and making it as same dimension as
             # B, T, C
             y = y.transpose(1, 2).contiguous().view(B, T, C)
+
+            # output projection
+            y = self.resid_dropout(self.c_proj(y))
             return y
             
 
