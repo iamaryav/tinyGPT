@@ -21,13 +21,16 @@ from torch.nn import functional as F
 
 @dataclass
 class GPTConfig:
-    vocab_size = 50257 # Number of token recognized by GPT
+    # Keep the number in power of two or divisible by two
+    # because most computation happens in power of two (0, 1)
+    vocab_size = 50304 # GPT-2: vocab size 50257 # Number of token recognized by GPT
     # Maximum number of token a model can take at a single time
     # context length, Maximum sequence length
     block_size = 1024 
     # Feature vector for each token, embedding dimensions, what information that token holds
     n_embd = 768 
-    # No of transformer block
+    # No of transformer block | Number of layers
+    # Number of residual layer
     n_layer = 12
     n_head = 12 # number of heads in each transformer block
     dropout = 0.0
@@ -49,8 +52,8 @@ class CasualSelfAttention(nn.Module):
         # creating a c_attn and making it with bigger dimensions
         # and using it wisely to behave like it key, query, value
         # Every token in sequence will these three vectors
-        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)
-        self.c_proj= nn.Linear(config.n_embd, config.n_embd)
+        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias= config.bias)
+        self.c_proj= nn.Linear(config.n_embd, config.n_embd, bias= config.bias)
         self.n_embd = config.n_embd
         self.n_head = config.n_head
         self.dropout = config.dropout
@@ -60,7 +63,9 @@ class CasualSelfAttention(nn.Module):
 
         # not bias it is a mask
         # this helps us to take average from previous tokens
-        # in other word learn from past models 
+        # in other word learn from past models
+        # pytorch internal attention is more efficient in GPU due
+        # to less operations
         self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
         if not self.flash:
             print("using slow attention, for flash attention use pytorch >=2.0")
@@ -114,13 +119,26 @@ class CasualSelfAttention(nn.Module):
 
 class MLP(nn.Module):
     """
-    # TODO: add comment
+    Feed forward Network present in Transformer decoder block
     """
-    pass
+    def __init__(self, config):
+        super().__init__()
+        self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.gelu = nn.GELU()
+        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias=config.bias)
+        self.dropout = nn.Dropout(config.dropout)
+    
+    def forward(self, x):
+        x = self.c_fc(x)
+        x = self.gelu(x)
+        x = self.c_proj(x)
+        x = self.dropout(x)
+        return x
+
 
 class Block(nn.Module):
     """
-    # TODO: add comment
+    # The transformer block
     """
     def __init__(self, config):
         super().__init__()
@@ -128,24 +146,29 @@ class Block(nn.Module):
         # Attention block
         # Holy grail of Transformer architechture
         self.ln_1 = nn.LayerNorm(config.n_embd)
-        self.atten = CasualSelfAttention(config)
+        self.attn = CasualSelfAttention(config)
         # Normalize the embedding dimensions
         self.ln_2 = nn.LayerNorm(config.n_embd)
         # this is where model learns or thinks on its learning
         self.mlp = MLP(config) # Feed forward network
     
     def forward(self, x):
-        pass
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
         
 
 
 class GPT(nn.Module):
     """
-    # TODO: add comment
+    GPT implementation
     """
 
     def __init__(self, config):
         super().__init__()
+        assert config.vocab_size is not None
+        assert config.block_size is not None
+        self.config = config
         # output embedding
         # positional embedding
         # Attention block
@@ -163,6 +186,19 @@ class GPT(nn.Module):
         # Projection from hidden layer weight(n_embd) to vocab size
         # this will help to calculate probablity
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        # TODO this line of code migh create an issue be aware
+        self.transformer.wte.weight = self.lm_head.weight
+
+        # initialize all weights 
+        self.apply(self._init_weights)
+        # as per GPT-2 paper
+        for pn, p in self.named_parameters():
+            if pn.endswith('c_proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
+        
+        # report number of parameters
+        print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
+
 
     def forward(self, x):
         # will code forward pass at last
