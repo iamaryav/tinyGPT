@@ -178,6 +178,7 @@ class GPT(nn.Module):
             wte = nn.Embedding(config.vocab_size, config.n_embd), # token embeddings
             # Contains feature of position 
             wpe = nn.Embedding(config.block_size, config.n_embd), # position embeddings
+            drop = nn.Dropout(config.dropout),
             # Multiple transformer blocks called layer here
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             # Normalize weights 
@@ -198,11 +199,56 @@ class GPT(nn.Module):
         
         # report number of parameters
         print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
+    
+    def get_num_params(self, non_embedding=True):
+        """
+        Return the number of parameters in the model.
+        For non-embedding count (default), the position embeddings get subtracted.
+        The token embeddings would too, except due to the parameter sharing these
+        params are actually used as weights in the final layer, so we include them.
+        """
+        n_params = sum(p.numel() for p in self.parameters())
+        if non_embedding:
+            n_params -= self.transformer.wpe.weight.numel()
+        return n_params
+    
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
 
-    def forward(self, x):
-        # will code forward pass at last
+    def forward(self, idx, targets=None):
+        device = idx.device
+        b, t = idx.size()
+        assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
+        # initialization of position embedding of shape t
+        pos = torch.arange(0, t, dtype=torch.long, device=device)
+        # forward the GPT model
+        pos_emb = self.transformer.wpe(pos) # position embedding of shape (t, n_embd) 
+        tok_emb = self.transformer.wte(idx) # token embedding of shape (b, t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+
+        for block in self.transformer.h:
+            x = block(x)
+        x = self.transformer.ln_f(x)
+
+        if targets is None:
+            # if target is given then it is training so calculate the loss
+            logits = self.lm_head(x)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+        else:
+            # inference time mini-optimization: only forward the lm_head on the very last position
+            logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dimension
+            loss = None
+        return logits, loss
+
+    def crop_block_size(self, block_size):
         pass
+
 
 
 
