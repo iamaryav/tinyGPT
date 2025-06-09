@@ -11,30 +11,44 @@
 # train with smaller dataset tiny shakespear .py
 # keep developing and testing
 
-from dataclasses import dataclass
 import math
+import inspect
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
 # ---------------------
 
+class LayerNorm(nn.Module):
+    """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
+
+    def __init__(self, ndim, bias):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(ndim))
+        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
+
+    def forward(self, input):
+        return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
+
+
 @dataclass
 class GPTConfig:
     # Keep the number in power of two or divisible by two
     # because most computation happens in power of two (0, 1)
-    vocab_size = 50304 # GPT-2: vocab size 50257 # Number of token recognized by GPT
+    vocab_size: int = 50304 # GPT-2: vocab size 50257 # Number of token recognized by GPT
     # Maximum number of token a model can take at a single time
     # context length, Maximum sequence length
-    block_size = 1024 
+    block_size: int = 1024 
     # Feature vector for each token, embedding dimensions, what information that token holds
-    n_embd = 768 
+    n_embd: int = 768 
     # No of transformer block | Number of layers
     # Number of residual layer
-    n_layer = 12
-    n_head = 12 # number of heads in each transformer block
-    dropout = 0.0
-    bias = True # True: bias in Linears and LayerNorms, Like GPT-2. False: a bit better and faster
+    n_layer: int = 12
+    n_head: int = 12 # number of heads in each transformer block
+    dropout: float = 0.0
+    bias: bool = True # True: bias in Linears and LayerNorms, Like GPT-2. False: a bit better and faster
 
 # # number of heads in each transformer block follow the gpt2 naming convention
 # Create this model class
@@ -72,50 +86,49 @@ class CasualSelfAttention(nn.Module):
             self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                              .view(1, 1, config.block_size, config.block_size))
                             
-        def forward(self, x):
-            # Dimension of data
-            # Actual training tokens
-            hs = config.n_head
-            B, T, C = x.shape
-            # this contains query, key and value all three
-            # we are using single c_attn to have all three by 
-            # having three times of n_embd dimensions
-            qkv = self.c_attn(x)
-            q, k, v = qkv.split(self.n_embd, dim=2)
+    def forward(self, x):
+        # Dimension of data
+        # Actual training tokens
+        B, T, C = x.shape
+        # this contains query, key and value all three
+        # we are using single c_attn to have all three by 
+        # having three times of n_embd dimensions
+        qkv = self.c_attn(x)
+        q, k, v = qkv.split(self.n_embd, dim=2)
 
-            # nh * hs = n_embd
-            # we are seperating the embedding dimensions in to multiple heads and size
-            # Instead of creating three diff linear layer converting everything in a single layer
-            # and viewing as a q, k, v like three feature vector 
-            # It makes calculation faster compare to having three vector
-            # head size = n_embd // n_head
-            ns = C // self.n_head
-            q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-            k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-            v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        # nh * hs = n_embd
+        # we are seperating the embedding dimensions in to multiple heads and size
+        # Instead of creating three diff linear layer converting everything in a single layer
+        # and viewing as a q, k, v like three feature vector 
+        # It makes calculation faster compare to having three vector
+        # head size = n_embd // n_head
+        ns = C // self.n_head
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
 
-            if self.flash:
-                # pytorch Default calculatioin of self attention
-                y = F.scaled_dot_product_attention(q, k, v, is_causal=True) # (B, nh, T, hs)
-            else:
-                # (query @ key) / dk ** 0.5
-                # implementation of attention manually
-                # how interesting they find each other
-                attn = (q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1)))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
-                attn = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
-                attn = F.softmax(attn, dim=-1)
-                attn = self.attn_dropout(attn)
-                y = attn @ v # (B, nh, T, T) @ (B, nh, T, hs) -> (B, nh, T, hs)
-            # we need to transpose then change the view
-            # concatinating the output and making it as same dimension as
-            # B, T, C
-            y = y.transpose(1, 2).contiguous().view(B, T, C)
+        if self.flash:
+            # pytorch Default calculatioin of self attention
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=True) # (B, nh, T, hs)
+        else:
+            # (query @ key) / dk ** 0.5
+            # implementation of attention manually
+            # how interesting they find each other
+            attn = (q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1)))) # (B, nh, T, hs) @ (B, nh, hs, T) -> (B, nh, T, T)
+            attn = attn.masked_fill(self.bias[:,:,:T,:T] == 0, float("-inf"))
+            attn = F.softmax(attn, dim=-1)
+            attn = self.attn_dropout(attn)
+            y = attn @ v # (B, nh, T, T) @ (B, nh, T, hs) -> (B, nh, T, hs)
+        # we need to transpose then change the view
+        # concatinating the output and making it as same dimension as
+        # B, T, C
+        y = y.transpose(1, 2).contiguous().view(B, T, C)
 
-            # output projection
-            y = self.resid_dropout(self.c_proj(y))
-            return y
-            
+        # output projection
+        y = self.resd_dropout(self.c_proj(y))
+        return y
+        
 
 class MLP(nn.Module):
     """
@@ -156,50 +169,39 @@ class Block(nn.Module):
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
         return x
-        
-
 
 class GPT(nn.Module):
-    """
-    GPT implementation
-    """
 
     def __init__(self, config):
         super().__init__()
         assert config.vocab_size is not None
         assert config.block_size is not None
         self.config = config
-        # output embedding
-        # positional embedding
-        # Attention block
-        # lm_head
-        self.transformer = nn.ModuleDict(dict(
-            # Contains Feature of tokens
-            wte = nn.Embedding(config.vocab_size, config.n_embd), # token embeddings
-            # Contains feature of position 
-            wpe = nn.Embedding(config.block_size, config.n_embd), # position embeddings
-            drop = nn.Dropout(config.dropout),
-            # Multiple transformer blocks called layer here
-            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-            # Normalize weights 
-            ln_f = nn.LayerNorm(config.n_embd)
-        ))
-        # Projection from hidden layer weight(n_embd) to vocab size
-        # this will help to calculate probablity
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        # TODO this line of code migh create an issue be aware
-        self.transformer.wte.weight = self.lm_head.weight
 
-        # initialize all weights 
+        self.transformer = nn.ModuleDict(dict(
+            wte = nn.Embedding(config.vocab_size, config.n_embd),
+            wpe = nn.Embedding(config.block_size, config.n_embd),
+            drop = nn.Dropout(config.dropout),
+            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            ln_f = LayerNorm(config.n_embd, bias=config.bias),
+        ))
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        # with weight tying when using torch.compile() some warnings get generated:
+        # "UserWarning: functional_call was passed multiple values for tied weights.
+        # This behavior is deprecated and will be an error in future versions"
+        # not 100% sure what this is, so far seems to be harmless. TODO investigate
+        self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
+
+        # init all weights
         self.apply(self._init_weights)
-        # as per GPT-2 paper
+        # apply special scaled init to the residual projections, per GPT-2 paper
         for pn, p in self.named_parameters():
             if pn.endswith('c_proj.weight'):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
-        
+
         # report number of parameters
         print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
-    
+
     def get_num_params(self, non_embedding=True):
         """
         Return the number of parameters in the model.
@@ -211,7 +213,7 @@ class GPT(nn.Module):
         if non_embedding:
             n_params -= self.transformer.wpe.weight.numel()
         return n_params
-    
+
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
@@ -220,30 +222,29 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-
     def forward(self, idx, targets=None):
         device = idx.device
         b, t = idx.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
-        # initialization of position embedding of shape t
-        pos = torch.arange(0, t, dtype=torch.long, device=device)
-        # forward the GPT model
-        pos_emb = self.transformer.wpe(pos) # position embedding of shape (t, n_embd) 
-        tok_emb = self.transformer.wte(idx) # token embedding of shape (b, t, n_embd)
-        x = self.transformer.drop(tok_emb + pos_emb)
+        pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
 
+        # forward the GPT model itself
+        tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
+        pos_emb = self.transformer.wpe(pos) # position embeddings of shape (t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
 
-        if targets is None:
-            # if target is given then it is training so calculate the loss
+        if targets is not None:
+            # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
         else:
-            # inference time mini-optimization: only forward the lm_head on the very last position
-            logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dimension
+            # inference-time mini-optimization: only forward the lm_head on the very last position
+            logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
             loss = None
+
         return logits, loss
 
     def crop_block_size(self, block_size):
@@ -388,15 +389,3 @@ class GPT(nn.Module):
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
-
-# ---------------------
-# for now to run model class testing purpose
-# will remove later
-with open('./data/input.txt', 'r', encoding='utf-8') as f:
-    text = f.read()
-print(text[:100])
-
-
-
-
-
