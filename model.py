@@ -46,7 +46,7 @@ class GPTConfig:
     # No of transformer block | Number of layers
     # Number of residual layer
     n_layer: int = 12
-    n_head: int = 12 # number of heads in each transformer block
+    n_head: int = 12 # number of self attention heads in each transformer block
     dropout: float = 0.0
     bias: bool = True # True: bias in Linears and LayerNorms, Like GPT-2. False: a bit better and faster
 
