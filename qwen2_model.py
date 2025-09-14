@@ -540,7 +540,7 @@ class Qwen2Model(nn.Module):
         hf_state = hf_model.state_dict()
 
         # creating instance of our model
-        model = Qwen2Model()
+        model = Qwen2Model(config)
 
         missing, unexpected = model.load_state_dict(hf_state, strict=False)
         print("Missing Keys: ", missing)
