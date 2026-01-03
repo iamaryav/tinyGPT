@@ -1,4 +1,10 @@
 """
+# tiny shakespeare, character-level
+Tiny shakespeare, of the good old char-rnn fame :) Treated on character-level.
+After running `prepare.py`:
+- train.bin has 1,003,854 tokens
+- val.bin has 111,540 tokens
+
 Prepare the Shakespeare dataset for character-level language modeling.
 So instead of encoding with GPT-2 BPE tokens, we just map characters to ints.
 Will save train.bin, val.bin containing the ids, and meta.pkl containing the
