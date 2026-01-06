@@ -13,3 +13,4 @@ input.txt
 env/
 venv/
 bench_log/
+qwen-small-tokenizer/

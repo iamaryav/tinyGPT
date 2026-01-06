@@ -22,9 +22,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 from transformers import AutoTokenizer
 # from torch.cuda.amp import GradScaler
-from models.transformers.qwen2_model import Qwen2Config, Qwen2Model
+from tinygpt.model_qwen import Qwen2Config, Qwen2Model
 # from models.helpers.muon import Muon
-from models.helpers.muon import Muon
+from tinygpt.muon import Muon
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg') 
@@ -35,17 +35,18 @@ num_iterations = 2000 # 5000 # 600 # 1000 # 4000 # 8000
 eval_every = 500 
 # eval_every = 10 
 log_interval = 1
-vocab_size: int = 1024
-# hidden_size: int = 256 # 256 # 64
-# intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-# num_hidden_layers: int = 2
-# num_attention_heads: int = 4
-# num_key_value_heads: int = 2 
-hidden_size: int = 1536 # 256 # 64
+# vocab_size: int = 1024
+vocab_size: int = 50304
+hidden_size: int = 256 # 256 # 64
 intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-num_hidden_layers: int = 28
-num_attention_heads: int = 12 
+num_hidden_layers: int = 2
+num_attention_heads: int = 4
 num_key_value_heads: int = 2 
+# hidden_size: int = 1536 # 256 # 64
+# intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
+# num_hidden_layers: int = 28
+# num_attention_heads: int = 12 
+# num_key_value_heads: int = 2 
 max_seq_len: int = 1024
 block_size = 1024 # 64 # seq_len, max_context_length, max_seq_len
 embedding_lr = 0.002 # 0.2 # learning rate for embedding params (Adam)
@@ -58,7 +59,8 @@ grad_clip = 1.0
 learning_rate= 6e-4
 compile = True # False
 batch_size = 4
-dataset = "shakespeare"
+# dataset = "shakespeare"
+dataset = ""
 device= "cuda"
 # skip because my pc graphics doesn't support bfloat16 by default 
 # dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16 # torch.float32
@@ -76,8 +78,8 @@ output_dirname = "out"
 # all global variable present in this script
 config_keys = [k for k, v in globals().items() if not k.startswith("_") and isinstance(v, (int, float, bool, str))]
 # print(f"config_keys: {config_keys}")
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "models", "helpers", "configurator.py")
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join("tinygpt", "configurator.py")
 print(f"config path: {CONFIG_PATH}")
 exec(open(CONFIG_PATH).read()) # overrides from command line or config file
 user_config = {k: globals()[k] for k in config_keys} # useful for logging
@@ -134,7 +136,7 @@ print(f"total batch size with grad accum steps: {grad_accum_steps * batch_size}"
 # --------------------------------------------------------------------------------------
 # Tiny data loader
 device_type = "cuda" if torch.cuda.is_available() else "cpu"
-data_dir = os.path.join('data', dataset)
+data_dir = os.path.join('tinygpt/data', dataset)
 def get_batch(split: str):
     # np memmap is more space efficient than normal file loading
     # it only loads the file in RAM when needed
@@ -144,7 +146,7 @@ def get_batch(split: str):
         data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint32, mode='r')
     else:
         data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint32, mode='r')
-
+    print(f"this is the len of data: {len(data)}")
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
     y = torch.stack([torch.from_numpy((data[i + 1:i+block_size + 1]).astype(np.int64)) for i in ix])
