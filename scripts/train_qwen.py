@@ -214,6 +214,7 @@ if init_from == "resume":
         opt.load_state_dict(state_dict)
 
 checkpoint = None # free up memory
+print(f"optimizer setup done--->")
 
 
 # --------------------------------------------------------------------------------------
@@ -344,9 +345,9 @@ for step in range(num_iterations + 1):
         if ddp:
             model.require_backward_grad_sync = (micro_step == grad_accum_steps - 1)
         with autocast_ctx:
-            # print(f"inside autocast")
+            print(f"before model forward loop")
             logits, loss = model(X, Y)
-            # print(f"loss calculated: {loss}")
+            print(f"model forward loop done")
             loss = loss / grad_accum_steps
             # print(f"loss calculated: {loss}")
         # print(f"outside autocast")

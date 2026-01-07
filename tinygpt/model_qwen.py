@@ -424,6 +424,8 @@ class Qwen2Model(nn.Module):
         assert input_ids is not None, "Input must not be empty"
         # input_ids - (batch, seq_len)
         inputs_embeds= self.model.embed_tokens(input_ids) # (batch, seq_len, hidden_dim)
+        print("here---->")
+        print(f"input_ids max value: {input_ids.max()}, vocab size: {self.config.vocab_size}")
         assert input_ids.max() < self.config.vocab_size, " Token Id out of vocab range"
 
         if use_cache and past_key_values is None:
