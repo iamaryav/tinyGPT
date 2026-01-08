@@ -143,18 +143,19 @@ def get_batch(split: str):
     if split == "train":
         # print(f" path for traind data: {os.path.join(data_dir, 'train.bin')}")
         # print(f"files exists: {os.path.exists(data_dir+ '/train.bin')}")
-        data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint32, mode='r')
+        data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
     else:
-        data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint32, mode='r')
+        data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
     print(f"this is the len of data: {len(data)}")
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
     y = torch.stack([torch.from_numpy((data[i + 1:i+block_size + 1]).astype(np.int64)) for i in ix])
     if device_type == "cuda":
+        print(f"I am a cuda device")
         x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
     else:
         x, y = x.to(device), y.to(device)
-    # print(f"train data size: {x.size(), y.size()}")
+    print(f"min and max: {torch.max(x), torch.min(x)}")
     return x, y
 
 meta_path = os.path.join(data_dir, "meta.pkl")
@@ -167,7 +168,7 @@ if os.path.exists(meta_path):
 
 # --------------------------------------------------------------------------------------
 # Initialize the Model
-model_args = dict(num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads, num_key_value_heads=num_key_value_heads, hidden_size=hidden_size, intermediate_size=intermediate_size, max_seq_len=max_seq_len)
+model_args = dict(num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads, num_key_value_heads=num_key_value_heads, hidden_size=hidden_size, intermediate_size=intermediate_size, max_seq_len=max_seq_len, vocab_size=vocab_size)
 if init_from == "scratch":
     print(f"Intializing a new model from scratch...")
     config = Qwen2Config(**model_args)

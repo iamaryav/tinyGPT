@@ -33,6 +33,8 @@ enc = tiktoken.get_encoding("gpt2")
 train_ids = enc.encode_ordinary(train_data)
 val_ids = enc.encode_ordinary(val_data)
 print(f"train has {len(train_ids):,} tokens")
+print(f"max token value: {max(train_ids):,} min token value: {min(train_ids)}")
+print(f"train has {len(train_ids):,} tokens")
 print(f"val has {len(val_ids):,} tokens")
 
 # export to bin files
