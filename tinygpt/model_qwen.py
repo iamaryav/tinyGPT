@@ -424,8 +424,6 @@ class Qwen2Model(nn.Module):
         assert input_ids is not None, "Input must not be empty"
         # input_ids - (batch, seq_len)
         inputs_embeds= self.model.embed_tokens(input_ids) # (batch, seq_len, hidden_dim)
-        print("here---->")
-        print(f"input_ids max value: {input_ids.max()}, vocab size: {self.config.vocab_size}")
         assert input_ids.max() < self.config.vocab_size, " Token Id out of vocab range"
 
         if use_cache and past_key_values is None:
@@ -494,7 +492,8 @@ class Qwen2Model(nn.Module):
         flops_per_fwdbwd = flops_per_token * T
         flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
         flops_achieved = flops_per_iter * (1.0/dt) 
-        flops_promised = 3e12 # nvidia 1650
+        # flops_promised = 3e12 # nvidia 1650 for fp32
+        flops_promised = 6e12 # nvidia 1650 for fp16
         mfu = flops_achieved / flops_promised
         return mfu
 
