@@ -17,6 +17,7 @@ import os
 import time
 import numpy as np
 import torch
+import tiktoken
 import pickle
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
@@ -29,20 +30,20 @@ matplotlib.use('Agg')
 
 # --------------------------------------------------------------------------------------
 # User defined constants
-num_iterations = 5000 # 5000 # 600 # 1000 # 4000 # 8000
+num_iterations = 1500 # 5000 # 600 # 1000 # 4000 # 8000
 eval_every = 500 
 log_interval = 1
 vocab_size: int = 50304
-hidden_size: int = 256 # 256 # 64
-intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-num_hidden_layers: int = 2
-num_attention_heads: int = 4
-num_key_value_heads: int = 2 
-# hidden_size: int = 1536 # 256 # 64
+# hidden_size: int = 256 # 256 # 64
 # intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-# num_hidden_layers: int = 28
-# num_attention_heads: int = 12 
+# num_hidden_layers: int = 2
+# num_attention_heads: int = 4
 # num_key_value_heads: int = 2 
+hidden_size: int = 1536 # 256 # 64
+intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
+num_hidden_layers: int = 28
+num_attention_heads: int = 12 
+num_key_value_heads: int = 2 
 max_seq_len: int = 1024
 block_size = 1024 # 64 # seq_len, max_context_length, max_seq_len
 embedding_lr = 0.002 # 0.2 # learning rate for embedding params (Adam)
@@ -385,9 +386,13 @@ print("Final loss plot saved as 'training_loss_final.png'")
 # Generate sampele from model
 print("# -----------------------------------------------------------------------------")
 print(f"generating the model output...")
-tokenizer = AutoTokenizer.from_pretrained("./data/shakespeare/qwen-small-tokenizer")
+# tokenizer = AutoTokenizer.from_pretrained("./data/shakespeare/qwen-small-tokenizer")
+enc = tiktoken.get_encoding("gpt2")
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(tokenizer.decode(model.generate(context, max_new_tokens=500, top_k=50)[0]))
+tokens = model.generate(context, max_new_tokens=500, top_k=50)[0]
+tokens = tokens.tolist()
+text = enc.decode(tokens)
+print(text)
 print("# -----------------------------------------------------------------------------")
 
 # --------------------------------------------------------------------------------------
