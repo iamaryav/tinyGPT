@@ -1,3 +1,7 @@
+"""
+this script will generate the output from trained models
+i.e saved in out directory as checkpoint ckpt.pt
+"""
 import torch
 import tiktoken
 from tinygpt.model_qwen import Qwen2Config, Qwen2Model

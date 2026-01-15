@@ -506,8 +506,8 @@ class Qwen2Model(nn.Module):
         embedding_params=  list(self.model.embed_tokens.parameters())
         lm_head_params = list(self.lm_head.parameters())
         print(f"self parameters: {len(list(self.parameters()))}, matrix_params: {len(matrix_Params)}, embeddings_params: {len(embedding_params)} lm_head_params: {len(lm_head_params)}")
-        # assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 5
-        assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 57
+        assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 5
+        # assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 57
         # AdamW optimizer is used for the embedding and lm_head
         # this below line scales the LR for the AdamW parameters by 1/(model ** 0.5)
         dmodel_lr_scale = (model_dim / 64) ** -0.5
