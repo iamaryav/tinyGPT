@@ -34,22 +34,26 @@ num_iterations = 1500 # 5000 # 600 # 1000 # 4000 # 8000
 eval_every = 500 
 log_interval = 1
 vocab_size: int = 50304
-hidden_size: int = 256 # 256 # 64
-intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-num_hidden_layers: int = 2
-num_attention_heads: int = 4
-num_key_value_heads: int = 2 
-# hidden_size: int = 1536 # 256 # 64
+
+# hidden_size: int = 256 # 256 # 64
 # intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-# num_hidden_layers: int = 28
-# num_attention_heads: int = 12 
+# num_hidden_layers: int = 2
+# num_attention_heads: int = 4
 # num_key_value_heads: int = 2 
+
+hidden_size: int = 1536 # 256 # 64
+intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
+num_hidden_layers: int = 28
+num_attention_heads: int = 12 
+num_key_value_heads: int = 2 
+
 max_seq_len: int = 1024
 block_size = 1024 # 64 # seq_len, max_context_length, max_seq_len
-embedding_lr = 0.002 # 0.2 # learning rate for embedding params (Adam)
+embedding_lr = 0.00004 # 0.2 # learning rate for embedding params (Adam)
 unembedding_lr = 0.004 # learning rate for the unembedding params (Adam)
 weight_decay = 0.0 # weight decay for the embedding and unembedding params (Adam)
-matrix_lr = 0.02 # learning rate for the matrix parameters (Muon)
+# matrix_lr = 0.02 # learning rate for the matrix parameters (Muon)
+matrix_lr = 0.005 # learning rate for the matrix parameters (Muon)
 beta1 = 0.9
 beta2 = 0.95
 grad_clip = 1.0
@@ -59,8 +63,8 @@ batch_size = 4
 dataset = "" # "shakespeare"
 device= "cuda"
 # skip because my pc graphics doesn't support bfloat16 by default 
-# dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16 # torch.float32
-dtype = torch.float16 # for now forcing to float 16
+dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16 # torch.float32
+# dtype = torch.float16 # for now forcing to float 16
 print(f"Device for auotcast: {device}, and dtype: {dtype}")
 autocast_ctx = torch.amp.autocast(device_type=device, dtype=dtype)
 # output
@@ -337,6 +341,11 @@ for step in range(num_iterations + 1):
     
     if grad_clip > 0.0:
         torch.nn.utils.clip_grad_norm_(raw_model.parameters(), grad_clip)
+    # if grad_clip > 0.0:
+    #     # unscale before clipping
+    #     scaler.unscale_(adamw_optimizer)
+    #     scaler.unscale_(muon_optimizer)
+    #     torch.nn.utils.clip_grad_norm_(r
 
     # step the optimizers
     lrm = get_lr_multiplier(step)

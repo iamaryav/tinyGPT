@@ -15,8 +15,8 @@ source .venv/bin/activate
 
 # download the datasets
 # change dataset for different runs
-python -m tinygpt.data.prepare_openweb
-# python -m tinygpt.data.prepare_shakespeare
+# python -m tinygpt.data.prepare_openweb
+python -m tinygpt.data.prepare_shakespeare
 
 # run the training scripts
 python -m scripts.train_qwen
