@@ -116,11 +116,14 @@ if wandb_log:
     wandb_run = wandb.init(project=wandb_project, name=run, config=user_config, mode="offline")
 
 # --------------------------------------------------------------------------------------
+# order to adjust
+# LR -> accumulation -> exploding gradients -> then adjust batchsize
+# batch - number of samples used to compute one weight update
 # I want 32 sample/batch per optimizer update
 # to mimic bigger batch size -- if you want 32, and your gpu supports 8
 # then you can have 4 forward and backward pass for one gradient update
 total_batch_size =  1024 # 4096 # 2048 # 8192 # 16384 # 32768 # 65336
-batch_size = 1 # 2 # device_batch_size # no of sequence per GPU
+batch_size = 1 # 2 # device_batch_size # no of sample per GPU
 # ddp_world_size = 1 # number of GPUs
 tokens_per_fwdbwd = batch_size * block_size * ddp_world_size
 assert total_batch_size % tokens_per_fwdbwd == 0
@@ -164,6 +167,9 @@ if init_from == "scratch":
     print(f"Intializing a new model from scratch...")
     config = Qwen2Config(**model_args)
     model = Qwen2Model(config)
+    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"total model params: {params}")
+    # exit()
 elif init_from == "resume":
     print(f"Resuming training from {output_dirname}")
     ckpt_path = os.path.join(output_dirname, 'ckpt.pt')
@@ -336,16 +342,10 @@ for step in range(num_iterations + 1):
             logits, loss = model(X, Y)
             loss = loss / grad_accum_steps
         loss.backward()
-        # scaler.scale(loss).backward()
         X, Y = get_batch("train")
     
     if grad_clip > 0.0:
         torch.nn.utils.clip_grad_norm_(raw_model.parameters(), grad_clip)
-    # if grad_clip > 0.0:
-    #     # unscale before clipping
-    #     scaler.unscale_(adamw_optimizer)
-    #     scaler.unscale_(muon_optimizer)
-    #     torch.nn.utils.clip_grad_norm_(r
 
     # step the optimizers
     lrm = get_lr_multiplier(step)
