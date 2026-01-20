@@ -9,6 +9,7 @@ Done:
 batch size > Optim formula > then code/debug > param counts/and training time on gpus > check correctness of arch, rot emb, kv cache > inference code > mfu calculation 
 Run this command to start the training
 
+
 ```
 bash run.sh
 ```

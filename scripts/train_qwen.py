@@ -122,7 +122,7 @@ if wandb_log:
 # I want 32 sample/batch per optimizer update
 # to mimic bigger batch size -- if you want 32, and your gpu supports 8
 # then you can have 4 forward and backward pass for one gradient update
-total_batch_size =  1024 # 4096 # 2048 # 8192 # 16384 # 32768 # 65336
+total_batch_size =  2048 # 4096 # 2048 # 8192 # 16384 # 32768 # 65336
 batch_size = 1 # 2 # device_batch_size # no of sample per GPU
 # ddp_world_size = 1 # number of GPUs
 tokens_per_fwdbwd = batch_size * block_size * ddp_world_size
