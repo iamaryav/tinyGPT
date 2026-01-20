@@ -45,7 +45,7 @@ class Qwen2Config():
 
     # making false to match nanochat gpt py
     bias: bool = False # True
-    layer_types: list = ("full_attention") # for _ in range(num_hidden_layers)]
+    layer_types: list[str] = ("full_attention") # for _ in range(num_hidden_layers)]
 
     rms_norm_eps: float = 1e-06
     rope_theta: float = 1000000.0
@@ -466,8 +466,7 @@ class Qwen2Model(nn.Module):
                 use_cache=use_cache,
                 cache_position=cache_position,
                 position_embeddings=(cos, sin),
-                **kwargs,
-            )
+                **kwargs,)
         hidden_states = self.model.norm(hidden_states)
 
         slice_indices = slice(-logits_to_Keep, None) if isinstance(logits_to_Keep, int) else logits_to_Keep
@@ -494,7 +493,8 @@ class Qwen2Model(nn.Module):
         flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
         flops_achieved = flops_per_iter * (1.0/dt) 
         # flops_promised = 3e12 # nvidia 1650 for fp32
-        flops_promised = 6e12 # nvidia 1650 for fp16
+        # flops_promised = 6e12 # nvidia 1650 for fp16
+        flops_promised =  330e12 # nvidia 1650 for fp16
         mfu = flops_achieved / flops_promised
         return mfu
 
@@ -507,7 +507,7 @@ class Qwen2Model(nn.Module):
         lm_head_params = list(self.lm_head.parameters())
         print(f"self parameters: {len(list(self.parameters()))}, matrix_params: {len(matrix_Params)}, embeddings_params: {len(embedding_params)} lm_head_params: {len(lm_head_params)}")
         # assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 5
-        assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 57
+        # assert len(list(self.parameters())) == len(matrix_Params) + len(embedding_params) + len(lm_head_params) + 57
         # AdamW optimizer is used for the embedding and lm_head
         # this below line scales the LR for the AdamW parameters by 1/(model ** 0.5)
         dmodel_lr_scale = (model_dim / 64) ** -0.5

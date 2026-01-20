@@ -29,7 +29,7 @@ enc = tiktoken.get_encoding("gpt2")   # or your custom vocab
 
 # Chat loop
 while True:
-    prompt = input(">>> ")
+    prompt = input("prompt>>> ")
     if not prompt:
         continue
 
@@ -42,5 +42,5 @@ while True:
         out = model.generate(context, max_new_tokens=200, top_k=50)
 
     tokens = out[0].tolist()
-    print(enc.decode(tokens))
+    print(enc.decode(tokens[len(ids):]))
 
