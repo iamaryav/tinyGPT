@@ -44,6 +44,7 @@ vocab_size: int = 50304
 # gpt2 model params size
 # making changes to match the gpt2 parameter size
 # 1.5B is too big, and requires lots of gpu's train
+# count params here
 hidden_size: int = 768 # 256 # 64
 intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
 num_hidden_layers: int = 12

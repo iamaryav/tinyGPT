@@ -33,6 +33,7 @@ class Qwen2Config():
     # Actual Config 
     # vocab_size: int = 151936
     # vocab_size: int = 1024
+    
 
     vocab_size: int = 50304
     hidden_size: int = 1536
