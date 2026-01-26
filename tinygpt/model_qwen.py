@@ -34,14 +34,21 @@ class Qwen2Config():
     # vocab_size: int = 151936
     # vocab_size: int = 1024
     
-
     vocab_size: int = 50304
-    hidden_size: int = 1536
-    num_hidden_layers: int = 28
-    num_attention_heads: int = 12
+    hidden_size: int = 768 # 256 # 64
+    intermediate_size: int = 3840 # five times as per qwen 2.5
+    num_hidden_layers: int = 12
+    num_attention_heads: int = 12 
     num_key_value_heads: int = 2 
-    intermediate_size: int = 7680 # 5 times of hidden size
     max_seq_len: int = 1024
+
+    # vocab_size: int = 50304
+    # hidden_size: int = 1536
+    # num_hidden_layers: int = 28
+    # num_attention_heads: int = 12
+    # num_key_value_heads: int = 2 
+    # intermediate_size: int = 7680 # 5 times of hidden size
+    # max_seq_len: int = 1024
     # max_seq_len: int = 32678
 
     # making false to match nanochat gpt py

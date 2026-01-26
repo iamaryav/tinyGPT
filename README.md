@@ -3,6 +3,7 @@ A tiny GPT model inspired by karpathy's nanoGPT and OpenAI's gpt-2.
 This repo deals with pre-training.
 
 TODOs:
+final dataset figure out
 hyperparam, refactoring and final training run > updated readme > blog/posts/publish 
 
 Done: 
@@ -11,5 +12,5 @@ Run this command to start the training
 
 
 ```
-bash run.sh
+bash ./runs/run.sh
 ```

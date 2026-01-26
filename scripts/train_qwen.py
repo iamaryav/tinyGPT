@@ -30,8 +30,8 @@ matplotlib.use('Agg')
 
 # --------------------------------------------------------------------------------------
 # User defined constants
-num_iterations = 1500 # 5000 # 600 # 1000 # 4000 # 8000
-eval_every = 500 
+num_iterations = 5000 # 5000 # 600 # 1000 # 4000 # 8000
+eval_every = 500
 log_interval = 1
 vocab_size: int = 50304
 
@@ -281,7 +281,7 @@ def estimate_loss():
     return out
     
 # Real time plot for loss visualization
-def plot_losses(save_path='training_progress.png'):
+def plot_losses(save_path='./assets/training_progress.png'):
     """Plot training and validtion losses and save to file"""
     plt.figure(figsize=(10, 6))
     # plt.plot(iterations, train_losses, label='Train Loss', marker='o', linewidth=2, markersize=4)
@@ -296,9 +296,18 @@ def plot_losses(save_path='training_progress.png'):
     plt.close()  # Close the figure to free memory
 
 # --------------------------------------------------------------------------------------
-# fix
-# loss is getting to NaN after 1500 iterations
-# something related to learing rate I guess
+# Generate sampele from model
+def sample():
+    print("# -----------------------------------------------------------------------------")
+    print(f"generating the model output...")
+    enc = tiktoken.get_encoding("gpt2")
+    context = torch.zeros((1, 1), dtype=torch.long, device=device)
+    tokens = model.generate(context, max_new_tokens=500, top_k=50)[0]
+    tokens = tokens.tolist()
+    text = enc.decode(tokens)
+    print(text)
+    print("# -----------------------------------------------------------------------------")
+# --------------------------------------------------------------------------------------
 
 X, Y = get_batch('train')
 raw_model = model.module if ddp else model # unwrap DDP container if needed
@@ -339,6 +348,7 @@ for step in range(num_iterations + 1):
                 }
                 print(f"saving checkpoint to {output_dirname}")
                 torch.save(checkpoint, os.path.join(output_dirname, "ckpt.pt"))
+                sample()
 
     # -----------------------------------------------------------------------------------
     # Single training step
@@ -381,7 +391,6 @@ for step in range(num_iterations + 1):
             mfu = raw_model.estimate_mfu(batch_size * grad_accum_steps, dt)
             running_mfu = mfu if running_mfu == -1.0 else 0.9*running_mfu + 0.1*mfu
         print(f"steps {step}; loss {lossf:.4f}, time {dt*1000:.2f}ms, mfu {running_mfu*100:.2f}%")
-        
     # local_step += 1
 
     # -----------------------------------------------------------------------------------
@@ -398,23 +407,13 @@ plt.title('Val Loss', fontsize=16, fontweight='bold')
 plt.legend(fontsize=12)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('training_loss_final.png', dpi=300, bbox_inches='tight')
+plt.savefig('./assets/training_loss_final.png', dpi=300, bbox_inches='tight')
 plt.close()
 print("Final loss plot saved as 'training_loss_final.png'")
 
 # --------------------------------------------------------------------------------------
-# Generate sampele from model
-print("# -----------------------------------------------------------------------------")
-print(f"generating the model output...")
-# tokenizer = AutoTokenizer.from_pretrained("./data/shakespeare/qwen-small-tokenizer")
-enc = tiktoken.get_encoding("gpt2")
-context = torch.zeros((1, 1), dtype=torch.long, device=device)
-tokens = model.generate(context, max_new_tokens=500, top_k=50)[0]
-tokens = tokens.tolist()
-text = enc.decode(tokens)
-print(text)
-print("# -----------------------------------------------------------------------------")
 
+sample()
 # --------------------------------------------------------------------------------------
 # cleanup
 if wandb_log:
