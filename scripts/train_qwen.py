@@ -281,7 +281,7 @@ def estimate_loss():
     return out
     
 # Real time plot for loss visualization
-def plot_losses(save_path='./assets/training_progress.png'):
+def plot_losses(save_path='./tinygpt/training_progress.png'):
     """Plot training and validtion losses and save to file"""
     plt.figure(figsize=(10, 6))
     # plt.plot(iterations, train_losses, label='Train Loss', marker='o', linewidth=2, markersize=4)
@@ -407,7 +407,7 @@ plt.title('Val Loss', fontsize=16, fontweight='bold')
 plt.legend(fontsize=12)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('./assets/training_loss_final.png', dpi=300, bbox_inches='tight')
+plt.savefig('./tinygpt/training_loss_final.png', dpi=300, bbox_inches='tight')
 plt.close()
 print("Final loss plot saved as 'training_loss_final.png'")
 
