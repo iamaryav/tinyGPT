@@ -29,7 +29,7 @@ enc = tiktoken.get_encoding("gpt2")   # or your custom vocab
 
 # Chat loop
 while True:
-    prompt = input("prompt>>> ")
+    prompt = input("prompt-> ")
     if not prompt:
         continue
 

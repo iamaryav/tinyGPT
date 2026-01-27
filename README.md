@@ -4,11 +4,12 @@ This repo deals with pre-training.
 
 TODOs:
 Finalize project
-- hyperparam tuning, refactoring, training run
-- updated readme
-- blog/posts/publish 
+- Refactoring, hyperparam tuning, training run
+- Updated readme
+- Blog/posts/publish 
 
 
+run this command to start the training
 ```
 bash ./runs/run.sh
 ```
