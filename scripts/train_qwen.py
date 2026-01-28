@@ -32,14 +32,9 @@ matplotlib.use('Agg')
 # User defined constants
 num_iterations = 5000 # 5000 # 600 # 1000 # 4000 # 8000
 eval_every = 500
-log_interval = 1
+log_interval = 10
 vocab_size: int = 50304
 
-# hidden_size: int = 256 # 256 # 64
-# intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-# num_hidden_layers: int = 2
-# num_attention_heads: int = 4
-# num_key_value_heads: int = 2 
 
 # gpt2 model params size
 # making changes to match the gpt2 parameter size
@@ -51,12 +46,6 @@ num_hidden_layers: int = 12
 num_attention_heads: int = 12 
 num_key_value_heads: int = 2 
 
-# qwen2 model params size
-# hidden_size: int = 1536 # 256 # 64
-# intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
-# num_hidden_layers: int = 28
-# num_attention_heads: int = 12 
-# num_key_value_heads: int = 2 
 
 max_seq_len: int = 1024
 block_size = 1024 # 64 # seq_len, max_context_length, max_seq_len

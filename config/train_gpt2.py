@@ -3,6 +3,7 @@
 # $ torchrun --standalone --nproc_per_node=8 train.py config/train_gpt2.py
 
 wandb_log = True
+
 wandb_project = 'owt'
 wandb_run_name='gpt2-124M'
 
