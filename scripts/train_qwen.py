@@ -30,43 +30,34 @@ matplotlib.use('Agg')
 
 # --------------------------------------------------------------------------------------
 # User defined constants
-num_iterations = 5000 # 5000 # 600 # 1000 # 4000 # 8000
+num_iterations = 5000 
 eval_every = 500
 log_interval = 10
+
 vocab_size: int = 50304
-
-
-# gpt2 model params size
-# making changes to match the gpt2 parameter size
-# 1.5B is too big, and requires lots of gpu's train
-# count params here
-hidden_size: int = 768 # 256 # 64
-intermediate_size: int = hidden_size * 5 # five times as per qwen 2.5
+hidden_size: int = 1024
+intermediate_size: int = hidden_size * 5
 num_hidden_layers: int = 12
 num_attention_heads: int = 12 
 num_key_value_heads: int = 2 
-
-
 max_seq_len: int = 1024
 block_size = 1024 # 64 # seq_len, max_context_length, max_seq_len
 embedding_lr = 0.00004 # 0.2 # learning rate for embedding params (Adam)
 unembedding_lr = 0.004 # learning rate for the unembedding params (Adam)
 weight_decay = 0.0 # weight decay for the embedding and unembedding params (Adam)
-# matrix_lr = 0.02 # learning rate for the matrix parameters (Muon)
-matrix_lr = 0.005 # learning rate for the matrix parameters (Muon)
+matrix_lr = 0.02 # learning rate for the matrix parameters (Muon)
 beta1 = 0.9
 beta2 = 0.95
 grad_clip = 1.0
 learning_rate= 6e-4
 compile = True # False
 batch_size = 4
-dataset = "" # "shakespeare"
+dataset = "" 
 device= "cuda"
-# skip because my pc graphics doesn't support bfloat16 by default 
 dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16 # torch.float32
-# dtype = torch.float16 # for now forcing to float 16
 print(f"Device for auotcast: {device}, and dtype: {dtype}")
 autocast_ctx = torch.amp.autocast(device_type=device, dtype=dtype)
+
 # output
 init_from = "scratch" # "scratch" and "resume"
 always_save_checkpoint = True # if True always save checkpoint after each eval
@@ -74,6 +65,7 @@ wandb_log = False
 model_tag = "" # 
 best_val_loss = 1e9
 output_dirname = "out"
+
 # --------------------------------------------------------------------------------------
 # all global variable present in this script
 config_keys = [k for k, v in globals().items() if not k.startswith("_") and isinstance(v, (int, float, bool, str))]
@@ -81,8 +73,9 @@ CONFIG_PATH = os.path.join("tinygpt", "configurator.py")
 print(f"config path: {CONFIG_PATH}")
 exec(open(CONFIG_PATH).read()) # overrides from command line or config file
 user_config = {k: globals()[k] for k in config_keys} # useful for logging
+
 # --------------------------------------------------------------------------------------
-# I/O setup
+
 # torchrun --nproc_per_node=1 train.py
 backend = "nccl" # "gloo"
 ddp = int(os.environ.get("RANK", -1)) != -1 # is thi ddp run?
@@ -96,8 +89,6 @@ if ddp:
     device = f"cuda:{ddp_local_rank}"
     master_process = ddp_rank == 0 # master process will do logging, checkpionting etc
     seed_offset = ddp_rank # each process gets different seed
-    # assert grad_accum_steps % ddp_world_size == 0
-    # grad_accum_steps //= ddp_world_size
 else:
     # if not ddp then we are running on a single gpu, and one process
     master_process = True
@@ -169,7 +160,6 @@ if init_from == "scratch":
     model = Qwen2Model(config)
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"total model params: {params}")
-    # exit()
 elif init_from == "resume":
     print(f"Resuming training from {output_dirname}")
     ckpt_path = os.path.join(output_dirname, 'ckpt.pt')
@@ -213,7 +203,6 @@ if init_from == "resume":
 
 checkpoint = None # free up memory
 
-
 # --------------------------------------------------------------------------------------
 # Set up hyperparameter Initialization
 # learning rate decay
@@ -250,6 +239,8 @@ if ddp:
     model = DDP(model, device_ids=[ddp_local_rank])
 
 # --------------------------------------------------------------------------------------
+# TODO: move these to seperate helper scripts
+# helper methods
 # Loss calculation, tracking and visualization
 val_losses = []
 iterations = []
@@ -272,20 +263,19 @@ def estimate_loss():
 # Real time plot for loss visualization
 def plot_losses(save_path='./tinygpt/training_progress.png'):
     """Plot training and validtion losses and save to file"""
-    plt.figure(figsize=(10, 6))
-    # plt.plot(iterations, train_losses, label='Train Loss', marker='o', linewidth=2, markersize=4)
-    plt.plot(iterations, val_losses, label='Val Loss',)# linewidth=2, markersize=4)
-    plt.xlabel('Iteration', fontsize=12)
-    plt.ylabel('Loss', fontsize=12)
-    plt.title('Val Loss', fontsize=14)
-    plt.legend(fontsize=10)
+    plt.figure(figsize=(12, 7))
+    plt.plot(iterations, val_losses, label='Val Loss',) 
+    plt.xlabel('Iteration', fontsize=14)
+    plt.ylabel('Loss', fontsize=14)
+    plt.title('Val Loss', fontsize=16, fontweight='bold')
+    plt.legend(fontsize=12)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    plt.close()  # Close the figure to free memory
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Loss plot saved to path{save_path}")
 
-# --------------------------------------------------------------------------------------
-# Generate sampele from model
+# Generate sample from model 
 def sample():
     print("# -----------------------------------------------------------------------------")
     print(f"generating the model output...")
@@ -296,13 +286,13 @@ def sample():
     text = enc.decode(tokens)
     print(text)
     print("# -----------------------------------------------------------------------------")
+
 # --------------------------------------------------------------------------------------
 
 X, Y = get_batch('train')
 raw_model = model.module if ddp else model # unwrap DDP container if needed
 local_step = 0
 running_mfu = -1.0
-# scaler = GradScaler()
 
 # training run
 for step in range(num_iterations + 1):
@@ -341,8 +331,6 @@ for step in range(num_iterations + 1):
 
     # -----------------------------------------------------------------------------------
     # Single training step
-    # evaluate the gradient
-    # set the learning rate for this iteration
     t0 = time.time()
     # single batch combined with several mini batches
     for micro_step in range(grad_accum_steps):
@@ -380,31 +368,14 @@ for step in range(num_iterations + 1):
             mfu = raw_model.estimate_mfu(batch_size * grad_accum_steps, dt)
             running_mfu = mfu if running_mfu == -1.0 else 0.9*running_mfu + 0.1*mfu
         print(f"steps {step}; loss {lossf:.4f}, time {dt*1000:.2f}ms, mfu {running_mfu*100:.2f}%")
-    # local_step += 1
 
-    # -----------------------------------------------------------------------------------
-
-print(f"Training complete.")
+print(f"Training complete. ")
 
 # --------------------------------------------------------------------------------------
-# Save final plot
-plt.figure(figsize=(12, 7))
-plt.plot(iterations, val_losses, label='Val Loss',) 
-plt.xlabel('Iteration', fontsize=14)
-plt.ylabel('Loss', fontsize=14)
-plt.title('Val Loss', fontsize=16, fontweight='bold')
-plt.legend(fontsize=12)
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.savefig('./tinygpt/training_loss_final.png', dpi=300, bbox_inches='tight')
-plt.close()
-print("Final loss plot saved as 'training_loss_final.png'")
-
-# --------------------------------------------------------------------------------------
-
+# after training completion
+plot_losses("./tinygpt/final_training_loss.png")
 sample()
-# --------------------------------------------------------------------------------------
-# cleanup
+
 if wandb_log:
     wandb_run.finish()
 

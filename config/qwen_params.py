@@ -1,4 +1,4 @@
-# qwen2 model params size
+# qwen2 model params 
 hidden_size: int = 1536 
 intermediate_size: int = hidden_size * 5 
 num_hidden_layers: int = 28

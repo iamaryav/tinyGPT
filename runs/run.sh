@@ -15,16 +15,19 @@ source .venv/bin/activate
 
 # download the datasets
 # change dataset for different runs
+python -m tinygpt.data.prepare_shakespeare
 # python -m tinygpt.data.prepare_openweb
 # python -m tinygpt.data.prepare_story
-python -m tinygpt.data.prepare_shakespeare
 
 
 # run the training scripts
 python -m scripts.train_qwen
 
+# run with small params for pc
+# python -m scripts.train_qwen config/small_params.py
+
 # run with qwen_params
 # python -m scripts.train_qwen config/qwen_params.py
 
 # run with gpt2 params
-# python -m scripts.train_qwen config/train_gpt2.py
+# python -m scripts.train_qwen config/gpt2_params.py
