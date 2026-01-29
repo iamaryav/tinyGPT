@@ -13,6 +13,7 @@ $ torchrun --nproc_per_node=8 --nnodes=2 --node_rank=0 --master_addr=123.456.123
 $ torchrun --nproc_per_node=8 --nnodes=2 --node_rank=1 --master_addr=123.456.123.456 --master_port=1234 train.py
 (If your cluster does not have Infiniband interconnect prepend NCCL_IB_DISABLE=1)
 """
+
 import os
 import time
 import numpy as np
@@ -33,7 +34,6 @@ matplotlib.use('Agg')
 num_iterations = 5000 
 eval_every = 500
 log_interval = 10
-
 vocab_size: int = 50304
 hidden_size: int = 1024
 intermediate_size: int = hidden_size * 5
@@ -54,10 +54,9 @@ compile = True # False
 batch_size = 4
 dataset = "" 
 device= "cuda"
-dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16 # torch.float32
+dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16 
 print(f"Device for auotcast: {device}, and dtype: {dtype}")
 autocast_ctx = torch.amp.autocast(device_type=device, dtype=dtype)
-
 # output
 init_from = "scratch" # "scratch" and "resume"
 always_save_checkpoint = True # if True always save checkpoint after each eval
@@ -67,6 +66,7 @@ best_val_loss = 1e9
 output_dirname = "out"
 
 # --------------------------------------------------------------------------------------
+
 # all global variable present in this script
 config_keys = [k for k, v in globals().items() if not k.startswith("_") and isinstance(v, (int, float, bool, str))]
 CONFIG_PATH = os.path.join("tinygpt", "configurator.py")
@@ -99,6 +99,7 @@ if master_process:
     os.makedirs(output_dirname, exist_ok=True)
 
 # --------------------------------------------------------------------------------------
+
 # logging
 run = "dummy"
 wandb_project = "owt"
@@ -107,7 +108,8 @@ if wandb_log:
     wandb_run = wandb.init(project=wandb_project, name=run, config=user_config, mode="offline")
 
 # --------------------------------------------------------------------------------------
-# order to adjust
+
+# order to adjust training issues
 # LR -> accumulation -> exploding gradients -> then adjust batchsize
 # batch - number of samples used to compute one weight update
 # I want 32 sample/batch per optimizer update
@@ -124,6 +126,7 @@ print(f"tokens per iteration will be: {tokens_per_fwdbwd:,} and grad_accum_steps
 print(f"total batch size with grad accum steps: {grad_accum_steps * batch_size}")
 
 # --------------------------------------------------------------------------------------
+
 # Tiny data loader
 device_type = "cuda" if torch.cuda.is_available() else "cpu"
 data_dir = os.path.join('tinygpt/data', dataset)
@@ -152,6 +155,7 @@ if os.path.exists(meta_path):
     print(f"found vocab_size = {meta_vocab_size} (inside {meta_path})")
 
 # --------------------------------------------------------------------------------------
+
 # Initialize the Model
 model_args = dict(num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads, num_key_value_heads=num_key_value_heads, hidden_size=hidden_size, intermediate_size=intermediate_size, max_seq_len=max_seq_len, vocab_size=vocab_size)
 if init_from == "scratch":
@@ -186,6 +190,7 @@ model.to(device)
 print(f"config of the model: {model.config}")
 
 # --------------------------------------------------------------------------------------
+
 # optimizer Initialization
 # optimizer
 # weight = weight - learning_rate * gradient
@@ -204,6 +209,7 @@ if init_from == "resume":
 checkpoint = None # free up memory
 
 # --------------------------------------------------------------------------------------
+
 # Set up hyperparameter Initialization
 # learning rate decay
 warmup_ratio = 0.0 # ratio iteration for LR warmup
@@ -239,9 +245,9 @@ if ddp:
     model = DDP(model, device_ids=[ddp_local_rank])
 
 # --------------------------------------------------------------------------------------
-# TODO: move these to seperate helper scripts
-# helper methods
-# Loss calculation, tracking and visualization
+
+# TODO: move these to seperate helper script
+# helper methods: Loss calculation, tracking and visualization
 val_losses = []
 iterations = []
 
@@ -294,7 +300,7 @@ raw_model = model.module if ddp else model # unwrap DDP container if needed
 local_step = 0
 running_mfu = -1.0
 
-# training run
+# beautiful training run
 for step in range(num_iterations + 1):
     last_step = step == num_iterations
 
@@ -330,6 +336,7 @@ for step in range(num_iterations + 1):
                 sample()
 
     # -----------------------------------------------------------------------------------
+
     # Single training step
     t0 = time.time()
     # single batch combined with several mini batches
@@ -358,6 +365,7 @@ for step in range(num_iterations + 1):
     model.zero_grad(set_to_none=True)
 
     # -----------------------------------------------------------------------------------
+
     # timing and logging
     t1 = time.time()
     dt = t1 - t0
@@ -372,6 +380,7 @@ for step in range(num_iterations + 1):
 print(f"Training complete. ")
 
 # --------------------------------------------------------------------------------------
+
 # after training completion
 plot_losses("./tinygpt/final_training_loss.png")
 sample()
