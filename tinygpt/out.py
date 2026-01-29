@@ -16,7 +16,7 @@ model = Qwen2Model(config).to(device)
 state = torch.load("out/ckpt.pt", map_location=device)
 state = state["model"]
 
-# remove DDP/compile preficx _orign_mod
+# remove DDP/compile prefix _orign_mod
 new_state = {}
 for k, v in state.items():
     new_state[k.replace("_orig_mod.","")] = v

@@ -1,7 +1,7 @@
 [project]
 name = "tinygpt"
 version = "0.1.0"
-description = "simple project for gpt pre-training"
+description = "A simple project for gpt pre-training"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
