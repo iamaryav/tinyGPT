@@ -33,7 +33,5 @@ python -m tinygpt.bigram
 
 
 #### TODOs:
-- Finalize project
-- Updated readme
-- Blog/posts/publish 
+- Blog/readme/posts/publish
 - Refactoring, hyperparam tuning, training run
