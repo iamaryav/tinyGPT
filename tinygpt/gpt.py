@@ -6,10 +6,10 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 # hyperparameters
-batch_size = 64 # how many independent sequences will we process in parallel?
+batch_size = 8 # how many independent sequences will we process in parallel?
 block_size = 256 # what is the maximum context length for predictions?
-max_iters = 500 # 5000 # Less iteration for my laptop
-eval_interval = 500
+max_iters = 2000 # 5000 # Less iteration for my laptop
+eval_interval = 100
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
@@ -205,6 +205,10 @@ print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+import time
+t0 = time.time()
+print(f"starting time : {t0}")
+print()
 for iter in range(max_iters):
 
     # every once in a while evaluate the loss on train and val sets
@@ -221,6 +225,8 @@ for iter in range(max_iters):
     loss.backward() # Calculate the gradient
     optimizer.step() # and update the values of parameter
 
+t1 = time.time()
+print(f"Total time to train {max_iters} iterations: {(t1 - t0)/60} min")
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
