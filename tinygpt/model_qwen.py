@@ -3,7 +3,7 @@ Qwen2 model
 Features:
 - untied weights for token and lm_head
 - rotary embeddings
-- Multi Query Attention (MQA) - Faster Inference
+- Group Query Attention (GQA) - Faster Inference
 - KV cache
 - RMSNorm
 """
